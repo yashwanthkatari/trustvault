@@ -1,10 +1,13 @@
 import uuid
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Boolean, Text
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
+
+def get_utc_now():
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
@@ -12,7 +15,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False, default="viewer")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
 class Document(Base):
     __tablename__ = "documents"
@@ -25,7 +28,7 @@ class Document(Base):
     mime_type = Column(String(100), nullable=False)
     file_hash = Column(String(64), nullable=False)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
 class DocumentPermission(Base):
     __tablename__ = "document_permissions"
@@ -34,7 +37,7 @@ class DocumentPermission(Base):
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     permission = Column(String(20), nullable=False)
     granted_by = Column(String(36), ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -47,7 +50,7 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)
     prev_hash = Column(String(64), nullable=False)
     entry_hash = Column(String(64), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(String(50), nullable=False)
 
     @staticmethod
     def calculate_hash(prev_hash: str, user_id: str, doc_id: str, action: str, status: str, timestamp: str) -> str:

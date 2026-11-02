@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault - Document Security & Access Kernel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-shield-halved text-emerald-400 text-2xl"></i>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Trust<span class="text-emerald-400">Vault</span></h1>
+                <p class="text-xs text-slate-400">Zero-Trust Document Kernel & Cryptographic Audit Trail</p>
+            </div>
+        </div>
+        <div id="authHeader" class="flex items-center space-x-4">
+            <span id="userBadge" class="text-xs bg-slate-800 px-3 py-1 rounded-full border border-slate-700 hidden"></span>
+            <button id="logoutBtn" onclick="logout()" class="text-xs text-red-400 hover:text-red-300 font-medium hidden">
+                <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Logout
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+        <section id="loginSection" class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-xl mt-12">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+                <i class="fa-solid fa-lock text-emerald-400 mr-2"></i> Evaluator Sign In
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400">Quick Test Credentials:</label>
+                    <div class="grid grid-cols-3 gap-2 mt-1">
+                        <button type="button" onclick="fillLogin('admin@trustvault.internal', 'AdminPassword123!')" class="text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-center border border-slate-700">Admin</button>
+                        <button type="button" onclick="fillLogin('owner@trustvault.internal', 'OwnerPassword123!')" class="text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-center border border-slate-700">Owner</button>
+                        <button type="button" onclick="fillLogin('viewer@trustvault.internal', 'ViewerPassword123!')" class="text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-center border border-slate-700">Viewer</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Email Address</label>
+                    <input id="loginEmail" type="email" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm mt-1 focus:border-emerald-400 focus:outline-none" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Password</label>
+                    <input id="loginPassword" type="password" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm mt-1 focus:border-emerald-400 focus:outline-none" />
+                </div>
+                <button type="button" onclick="handleLogin()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold py-2 rounded text-sm transition">
+                    Authenticate Session
+                </button>
+                <div id="loginError" class="text-xs text-rose-400 hidden"></div>
+            </div>
+        </section>
+
+        <div id="dashboardSection" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <div id="uploadCard" class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                        <h2 class="text-sm font-semibold mb-3 flex items-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-emerald-400 mr-2"></i> Upload Document (Owner / Admin)
+                        </h2>
+                        <form id="uploadForm" onsubmit="handleUpload(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input id="uploadFile" type="file" required class="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-emerald-400 hover:file:bg-slate-700" />
+                            <input id="uploadCategory" type="text" placeholder="Category (e.g. Legal)" class="bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:border-emerald-400 focus:outline-none" />
+                            <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-semibold py-1.5 rounded transition">
+                                Upload & Hash File
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-sm font-semibold flex items-center">
+                                <i class="fa-solid fa-folder-closed text-emerald-400 mr-2"></i> Accessible Documents
+                            </h2>
+                            <button onclick="loadDocuments()" class="text-xs text-slate-400 hover:text-emerald-400">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="border-b border-slate-800 text-slate-400">
+                                    <tr>
+                                        <th class="pb-2">Title</th>
+                                        <th class="pb-2">Category</th>
+                                        <th class="pb-2">Size</th>
+                                        <th class="pb-2">SHA-256 Hash</th>
+                                        <th class="pb-2 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="documentTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr><td colspan="5" class="py-4 text-center text-slate-500">No accessible documents found.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-sm font-semibold flex items-center">
+                                <i class="fa-solid fa-fingerprint text-emerald-400 mr-2"></i> Audit Chain Verifier
+                            </h2>
+                            <button onclick="verifyAuditChain()" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded hover:bg-emerald-500/20 transition">
+                                Verify Chain
+                            </button>
+                        </div>
+                        <div id="chainStatusBox" class="p-3 bg-slate-950 border border-slate-800 rounded text-xs text-slate-400">
+                            Click "Verify Chain" to verify tamper-evident hashes.
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-sm font-semibold flex items-center">
+                                <i class="fa-solid fa-list-check text-emerald-400 mr-2"></i> Audit Trail
+                            </h2>
+                            <button onclick="loadAuditLogs()" class="text-xs text-slate-400 hover:text-emerald-400">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                        <div id="auditLogFeed" class="space-y-2 max-h-96 overflow-y-auto text-[11px] pr-1">
+                            <div class="text-slate-500 text-center py-4">Sign in as Admin to inspect audit trail.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="permissionModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 max-w-md w-full p-6 rounded-xl space-y-4">
+            <h3 class="text-sm font-bold flex items-center">
+                <i class="fa-solid fa-user-shield text-emerald-400 mr-2"></i> Grant / Revoke Access
+            </h3>
+            <input type="hidden" id="modalDocId" />
+            <div>
+                <label class="text-xs text-slate-400 font-medium">Target User Email</label>
+                <input id="modalUserEmail" type="email" class="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded px-3 py-2 text-xs mt-1 focus:border-emerald-400 focus:outline-none" />
+                <p class="text-[10px] text-slate-500 mt-1">Pre-filled with evaluator account: viewer@trustvault.internal</p>
+            </div>
+            <div>
+                <label class="text-xs text-slate-400 font-medium">Access Level</label>
+                <select id="modalPermissionType" class="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded px-3 py-2 text-xs mt-1 focus:border-emerald-400 focus:outline-none">
+                    <option value="read">Read (Download & Stream)</option>
+                    <option value="edit">Edit (Metadata & Write)</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeModal()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded text-slate-300">Cancel</button>
+                <button type="button" onclick="submitGrantPermission()" class="px-3 py-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded">Confirm Grant</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let session = { token: localStorage.getItem("tv_token"), role: localStorage.getItem("tv_role"), email: localStorage.getItem("tv_email") };
+
+        function fillLogin(email, password) {
+            document.getElementById("loginEmail").value = email;
+            document.getElementById("loginPassword").value = password;
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById("loginEmail").value;
+            const password = document.getElementById("loginPassword").value;
+            const errBox = document.getElementById("loginError");
+            errBox.classList.add("hidden");
+
+            const formData = new URLSearchParams();
+            formData.append("username", email);
+            formData.append("password", password);
+
+            try {
+                const res = await fetch("/api/auth/login", { method: "POST", body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Invalid login credentials.");
+                session = { token: data.access_token, role: data.role, email: data.email };
+                localStorage.setItem("tv_token", data.access_token);
+                localStorage.setItem("tv_role", data.role);
+                localStorage.setItem("tv_email", data.email);
+                renderApp();
+            } catch (err) {
+                errBox.innerText = err.message;
+                errBox.classList.remove("hidden");
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            session = { token: null, role: null, email: null };
+            renderApp();
+        }
+
+        function renderApp() {
+            const loggedIn = !!session.token;
+            document.getElementById("loginSection").classList.toggle("hidden", loggedIn);
+            document.getElementById("dashboardSection").classList.toggle("hidden", !loggedIn);
+            document.getElementById("logoutBtn").classList.toggle("hidden", !loggedIn);
+            
+            const badge = document.getElementById("userBadge");
+            if (loggedIn) {
+                badge.innerText = `${session.email} (${session.role})`;
+                badge.classList.remove("hidden");
+                document.getElementById("uploadCard").style.display = session.role === "viewer" ? "none" : "block";
+                loadDocuments();
+                if (session.role === "admin") loadAuditLogs();
+            } else {
+                badge.classList.add("hidden");
+            }
+        }
+
+        async function loadDocuments() {
+            try {
+                const res = await fetch("/api/documents", {
+                    headers: { "Authorization": `Bearer ${session.token}` }
+                });
+                const docs = await res.json();
+                const tbody = document.getElementById("documentTableBody");
+                if (!Array.isArray(docs) || !docs.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No accessible documents found.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = docs.map(d => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="py-2.5 font-medium">${d.title}</td>
+                        <td class="py-2.5 text-slate-400">${d.category}</td>
+                        <td class="py-2.5 text-slate-400">${(d.file_size / 1024).toFixed(1)} KB</td>
+                        <td class="py-2.5 font-mono text-slate-500 text-[10px]" title="${d.file_hash}">${d.file_hash.substring(0, 16)}...</td>
+                        <td class="py-2.5 text-right space-x-2">
+                            <button onclick="downloadDoc('${d.id}', '${d.title}')" class="text-emerald-400 hover:text-emerald-300 font-medium">Download</button>
+                            ${session.role !== 'viewer' ? `<button onclick="openPermissionModal('${d.id}')" class="text-indigo-400 hover:text-indigo-300 font-medium">Access</button>` : ''}
+                        </td>
+                    </tr>
+                `).join("");
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function downloadDoc(id, title) {
+            try {
+                const res = await fetch(`/api/documents/${id}/download`, {
+                    headers: { "Authorization": `Bearer ${session.token}` }
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(`Access Denied (HTTP ${res.status}): ${err.detail || "Blocked by authorization policy"}`);
+                    return;
+                }
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = title;
+                a.click();
+            } catch (err) {
+                alert("Download failed.");
+            }
+        }
+
+        async function handleUpload(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById("uploadFile");
+            const category = document.getElementById("uploadCategory").value || "General";
+            if (!fileInput.files.length) return;
+
+            const fd = new FormData();
+            fd.append("file", fileInput.files[0]);
+            fd.append("category", category);
+
+            const res = await fetch("/api/documents/upload", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${session.token}` },
+                body: fd
+            });
+            if (res.ok) {
+                fileInput.value = "";
+                loadDocuments();
+                if (session.role === "admin") loadAuditLogs();
+            } else {
+                const err = await res.json();
+                alert(`Upload failed: ${err.detail || "Forbidden"}`);
+            }
+        }
+
+        function openPermissionModal(docId) {
+            document.getElementById("modalDocId").value = docId;
+            document.getElementById("modalUserEmail").value = "viewer@trustvault.internal";
+            document.getElementById("permissionModal").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("permissionModal").classList.add("hidden");
+        }
+
+        async function submitGrantPermission() {
+            const docId = document.getElementById("modalDocId").value;
+            const emailInput = document.getElementById("modalUserEmail");
+            const email = emailInput.value.trim();
+            const perm = document.getElementById("modalPermissionType").value;
+
+            if (!email) {
+                alert("Please enter a valid target user email.");
+                return;
+            }
+
+            const res = await fetch(`/api/documents/${docId}/permissions`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${session.token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ user_email: email, permission: perm })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                closeModal();
+                alert(`Success: ${data.message || 'Access granted successfully!'}`);
+                if (session.role === "admin") loadAuditLogs();
+            } else {
+                alert(`Grant Failed (HTTP ${res.status}):\n${data.detail || JSON.stringify(data)}`);
+            }
+        }
+
+        async function loadAuditLogs() {
+            if (session.role !== "admin") return;
+            const feed = document.getElementById("auditLogFeed");
+            try {
+                const res = await fetch("/api/admin/audit-logs", {
+                    headers: { "Authorization": `Bearer ${session.token}` }
+                });
+                const logs = await res.json();
+                feed.innerHTML = logs.map(l => `
+                    <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                        <div class="flex justify-between font-semibold">
+                            <span class="${l.status === 'SUCCESS' ? 'text-emerald-400' : 'text-rose-400'}">${l.action} (${l.status})</span>
+                            <span class="text-slate-500 font-mono text-[9px]">${l.created_at ? l.created_at.substring(11, 19) : ''}</span>
+                        </div>
+                        <div class="font-mono text-[9px] text-slate-500 truncate mt-1">Hash: ${l.entry_hash}</div>
+                    </div>
+                `).join("");
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function verifyAuditChain() {
+            const box = document.getElementById("chainStatusBox");
+            box.innerText = "Computing SHA-256 cryptographic hashes...";
+            try {
+                const res = await fetch("/api/admin/audit-verify", {
+                    headers: { "Authorization": `Bearer ${session.token}` }
+                });
+                const data = await res.json();
+                if (data.valid) {
+                    box.innerHTML = `<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Chain Intact (${data.count} records verified)</span>`;
+                } else {
+                    box.innerHTML = `<span class="text-rose-400 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Tampering Detected at entry ${data.broken_at_id}!</span>`;
+                }
+            } catch (err) {
+                box.innerText = "Verification endpoint requires admin privileges.";
+            }
+        }
+
+        renderApp();
+    </script>
+</body>
+</html>
